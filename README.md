@@ -12,7 +12,8 @@ Sources are merged: for each mod it consults both the mod's own GitHub `Link` **
 the newer version** — so you get coverage for mods with no usable Link (or non-GitHub hosts like Codeberg) while
 still catching fresh GitHub releases the manifest hasn't indexed yet.
 
-<img width="3840" height="2054" alt="The Mod Updater dash tab" src="https://github.com/user-attachments/assets/f23b0278-a0fa-4f83-942f-29d78736cf9d" />
+<img width="3840" height="2054" alt="Discord_0MNVJyIyUz" src="https://github.com/user-attachments/assets/d83cce64-8f27-4b9a-8715-8db7a514353e" />
+
 
 ## How it works
 
