@@ -4,8 +4,9 @@ A [ResoniteModLoader](https://github.com/resonite-modding-group/ResoniteModLoade
 mods up to date. It handles both **RML mods** (`.dll` in `rml_mods`) and **MonkeyLoader mods** (`.nupkg` in
 `MonkeyLoader/Mods`), and also **notifies** you when **MonkeyLoader itself** has a newer release (without touching
 the loader). Each mod can be left on **Latest** (newest stable release) or **pinned to any specific version** —
-including older ones (a downgrade) — or set to **Hold** (never touched). Changes are staged in place, ready to load
-on your next Resonite restart. It never touches itself.
+including older ones (a downgrade) — or set to **Hold** (never touched). **MonkeyLoader mods hot-reload on the spot
+(no restart needed)**; RML `.dll` mods are staged in place, ready to load on your next Resonite restart. It never
+touches itself.
 
 Sources are merged: for each mod it consults both the mod's own GitHub `Link` **and** the community
 [resonite-mod-manifest](https://github.com/resonite-modding-group/resonite-mod-manifest), and uses **whichever has
@@ -27,8 +28,9 @@ still catching fresh GitHub releases the manifest hasn't indexed yet.
    (up- or downgrade); *Hold* = untouched. Downloads prefer the manifest's direct, sha256-checked artifact URL when
    that version is listed (no API), else the GitHub release asset.
 4. **Stage** – a loaded file usually can be *moved* (not overwritten): the old file goes to
-   `_ModUpdater/backups/<Mod>/…​.bak` and the new `.dll`/`.nupkg` is written in its place, taking effect on the
-   **next launch** (the `.bak` is your rollback backup). Some mods' files are held by a *persistent* lock all
+   `_ModUpdater/backups/<Mod>/…​.bak` and the new `.dll`/`.nupkg` is written in its place (the `.bak` is your
+   rollback backup). **MonkeyLoader** picks up the new `.nupkg` and **hot-reloads it right away**; **RML** `.dll`
+   mods take effect on the **next launch**. Some mods' files are held by a *persistent* lock all
    session and can't be swapped in-process — for those the download is **staged to `_ModUpdater/pending/`** and a
    small detached helper waits for Resonite to fully close (everything unlocked then) and applies the swap, so it's
    ready next launch. MonkeyLoader itself is **never** staged — it's notify-only (a button points you at its
@@ -42,7 +44,8 @@ still catching fresh GitHub releases the manifest hasn't indexed yet.
    - **Update now** is visible but disabled unless there's a change to apply; it reads **Downgrade** when the
      pinned target is older than installed. Pressing it stages just that mod (independent of Auto-download).
    - A **↺** revert button appears on mods that have a backup.
-   - The header has **Check now** and an **Auto-download** toggle. Staged changes apply on the next restart.
+   - The header has **Check now** and an **Auto-download** toggle. MonkeyLoader updates hot-reload immediately;
+     staged RML updates apply on the next restart.
 
 ## Build & install
 
