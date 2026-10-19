@@ -62,6 +62,7 @@ namespace ModUpdater.Core
         public ModStatus Status = ModStatus.Unknown;
         public string Detail;           // human-readable note (error text, asset name, etc.)
         public bool HasBackup;          // a restorable backup exists on disk
+        public bool HotReloaded;        // MonkeyLoader .nupkg swapped live: reloads itself, no restart needed
 
         public string AssetExtension => Kind == ModKind.MlNupkg ? ".nupkg" : ".dll";
         public string FileName => string.IsNullOrEmpty(DllPath) ? Name + AssetExtension : System.IO.Path.GetFileName(DllPath);

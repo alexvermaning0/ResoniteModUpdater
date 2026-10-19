@@ -176,7 +176,7 @@ namespace ModUpdater.UI
             bool canUpdate = info.Status == ModStatus.Outdated;
             string label = info.Status switch
             {
-                ModStatus.Updated => "staged",
+                ModStatus.Updated => info.HotReloaded ? "reloaded" : "staged",
                 ModStatus.Reverted => "staged",
                 ModStatus.Outdated => info.IsDowngrade ? "Downgrade" : "Update now",
                 _ => "Update now",

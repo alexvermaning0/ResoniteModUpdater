@@ -201,22 +201,29 @@ namespace ModUpdater
                 try
                 {
                     using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-                    var (ok, detail) = await _engine.StageAsync(info, Config.GetValue(GITHUB_TOKEN) ?? "", cts.Token).ConfigureAwait(false);
+                    var outcome = await _engine.StageAsync(info, Config.GetValue(GITHUB_TOKEN) ?? "", cts.Token).ConfigureAwait(false);
                     var modsDir = System.IO.Path.GetDirectoryName(info.DllPath);
-                    if (ok)
+                    // Hot-reloaded MonkeyLoader mods take effect on their own — don't track them as pending a restart.
+                    if (outcome.Ok && !outcome.HotReload)
                     {
                         var state = UpdaterState.Load(modsDir);
                         state.AddOrReplacePending(new PendingUpdate
                         {
-                            Name = info.Name, FromVersion = info.InstalledVersion, ToVersion = detail,
+                            Name = info.Name, FromVersion = info.InstalledVersion, ToVersion = outcome.Version,
                             IsRevert = false, At = DateTime.Now.ToString("o"),
                         });
                         state.Save(modsDir);
                     }
                     MarshalToUserspace(() =>
                     {
-                        if (ok) UI.Notify.Toast($"Staged {info.Name} {detail} — restart to apply", Elements.Core.colorX.Green);
-                        else UI.Notify.Toast($"Update {info.Name} failed: {detail}", Elements.Core.colorX.Red);
+                        if (!outcome.Ok)
+                            UI.Notify.Toast($"Update {info.Name} failed: {outcome.Error}", Elements.Core.colorX.Red);
+                        else if (outcome.HotReload)
+                            UI.Notify.Toast($"Updated {info.Name} {outcome.Version} — hot-reloading, no restart needed", Elements.Core.colorX.Green);
+                        else if (outcome.Queued)
+                            UI.Notify.Toast($"Staged {info.Name} {outcome.Version} — applies when you close Resonite", Elements.Core.colorX.Green);
+                        else
+                            UI.Notify.Toast($"Staged {info.Name} {outcome.Version} — restart to apply", Elements.Core.colorX.Green);
                         UI.UpdaterScreen.Refresh();
                     });
                 }

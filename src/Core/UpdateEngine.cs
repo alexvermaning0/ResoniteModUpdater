@@ -270,25 +270,54 @@ namespace ModUpdater.Core
         }
 
         /// <summary>
+        /// A successful live swap of a MonkeyLoader .nupkg takes effect immediately: MonkeyLoader watches
+        /// its Mods folder and unloads+reloads a changed .nupkg after a short debounce, so no Resonite
+        /// restart is needed. RML .dll mods, and any swap that had to be queued because the file was locked
+        /// all session, still need a restart. (Pre-patcher mods can't hot-reload — hence the caveat below.)
+        /// </summary>
+        public static bool HotReloads(ModInfo info, InstallResult inst) =>
+            info != null && inst != null && inst.Ok && !inst.Queued && info.Kind == ModKind.MlNupkg;
+
+        /// <summary>The human-readable note to show after a successful stage, per how it will take effect.</summary>
+        public static string StageDetail(bool hotReload, bool queued, bool isDowngrade) =>
+            hotReload ? "hot-reloads in a few seconds (restart if it uses pre-patchers)"
+            : queued ? "queued — applies when you close Resonite"
+            : isDowngrade ? "downgraded, restart pending"
+            : null;
+
+        /// <summary>The outcome of staging a single mod's update (for the on-demand "Update now" path).</summary>
+        public readonly struct StageOutcome
+        {
+            public bool Ok { get; init; }
+            public string Version { get; init; }    // normalized target version (when Ok)
+            public bool HotReload { get; init; }     // MonkeyLoader live swap: no restart needed
+            public bool Queued { get; init; }        // applies when Resonite closes
+            public string Error { get; init; }       // failure reason (when !Ok)
+        }
+
+        /// <summary>
         /// Download &amp; stage a single mod's target version on demand (independent of AutoDownload).
         /// Requires the mod to have been checked already (Owner/Repo/TargetTag populated).
         /// </summary>
-        public async Task<(bool ok, string detail)> StageAsync(ModInfo info, string token, CancellationToken ct)
+        public async Task<StageOutcome> StageAsync(ModInfo info, string token, CancellationToken ct)
         {
-            if (info.NotifyOnly) return (false, "notify-only");
-            if (string.IsNullOrEmpty(info.TargetTag)) return (false, "no update target");
+            if (info.NotifyOnly) return new StageOutcome { Ok = false, Error = "notify-only" };
+            if (string.IsNullOrEmpty(info.TargetTag)) return new StageOutcome { Ok = false, Error = "no update target" };
 
             var (bytes, fail, detail) = await ResolveAndDownloadAsync(info, info.TargetTag, token, ct).ConfigureAwait(false);
-            if (bytes == null) return (false, detail);
+            if (bytes == null) return new StageOutcome { Ok = false, Error = detail };
 
             string targetVersion = VersionUtil.Normalize(info.TargetTag) ?? info.TargetTag;
             var inst = PendingQueue.StageOrQueue(info.DllPath, info.Name, targetVersion, bytes);
-            if (!inst.Ok) return (false, inst.Detail);
+            if (!inst.Ok) return new StageOutcome { Ok = false, Error = inst.Detail };
 
+            bool hot = HotReloads(info, inst);
             info.Status = ModStatus.Updated;
             info.HasBackup = true;
-            _log($"[{info.Name}] {(inst.Queued ? "queued" : "staged")} {targetVersion}");
-            return (true, inst.Queued ? targetVersion + " (queued — closes to apply)" : targetVersion);
+            info.HotReloaded = hot;
+            info.Detail = StageDetail(hot, inst.Queued, info.IsDowngrade);
+            _log($"[{info.Name}] {(inst.Queued ? "queued" : hot ? "hot-reloaded" : "staged")} {targetVersion}");
+            return new StageOutcome { Ok = true, Version = targetVersion, HotReload = hot, Queued = inst.Queued };
         }
 
         /// <summary>
@@ -416,20 +445,27 @@ namespace ModUpdater.Core
                 return;
             }
 
+            bool hot = HotReloads(info, result);
             info.Status = ModStatus.Updated;
             info.HasBackup = true;
-            info.Detail = result.Queued ? "queued — applies when you close Resonite"
-                         : (info.IsDowngrade ? "downgraded, restart pending" : null);
-            var p = new PendingUpdate
+            info.HotReloaded = hot;
+            info.Detail = StageDetail(hot, result.Queued, info.IsDowngrade);
+
+            // Hot-reloaded MonkeyLoader mods take effect on their own, so don't track them as
+            // waiting-for-restart; everything else is pending the next launch.
+            if (!hot)
             {
-                Name = info.Name,
-                FromVersion = info.InstalledVersion,
-                ToVersion = targetVersion,
-                IsRevert = false,
-                At = DateTime.Now.ToString("o"),
-            };
-            lock (pendingLock) pending.Add(p);
-            _log($"[{info.Name}] staged {targetVersion} (restart to apply)");
+                var p = new PendingUpdate
+                {
+                    Name = info.Name,
+                    FromVersion = info.InstalledVersion,
+                    ToVersion = targetVersion,
+                    IsRevert = false,
+                    At = DateTime.Now.ToString("o"),
+                };
+                lock (pendingLock) pending.Add(p);
+            }
+            _log($"[{info.Name}] {(hot ? "hot-reloaded" : "staged")} {targetVersion}{(hot ? "" : " (restart to apply)")}");
         }
     }
 }
