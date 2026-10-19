@@ -15,7 +15,7 @@ namespace ModUpdater
     {
         public override string Name => "ModUpdater";
         public override string Author => "alexvermaning0";
-        public override string Version => "1.1.0";
+        public override string Version => "1.0.1";
         public override string Link => "https://github.com/alexvermaning0/ResoniteModUpdater";
 
         [AutoRegisterConfigKey]

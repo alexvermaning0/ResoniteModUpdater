@@ -7,7 +7,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>ModUpdater</AssemblyName>
     <RootNamespace>ModUpdater</RootNamespace>
-    <Version>1.1.0</Version>
+    <Version>1.0.1</Version>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <DebugType>portable</DebugType>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
